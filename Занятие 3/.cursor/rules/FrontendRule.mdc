@@ -1,0 +1,223 @@
+---
+alwaysApply: true
+---
+
+# Cursor Rules — AI Task Board (Frontend)
+# Stack: React · TypeScript · Supabase · Tailwind CSS
+
+---
+
+## 1. PROJECT OVERVIEW
+
+AI-powered task board (Trello-like) with:
+- Kanban board UI
+- AI task decomposition and assignment
+- Telegram bot integration for task creation
+- In-app AI chat assistant
+- Subscription/payment flow
+
+---
+
+## 2. FOLDER STRUCTURE
+
+```
+src/
+  components/       # Reusable UI components only (no business logic)
+    board/          # Board, Column, Card, DragHandle
+    ai/             # AiChat, AiTaskBreakdown, AiSuggestion
+    payment/        # PricingModal, SubscriptionBanner
+    telegram/       # TelegramConnect, TelegramStatus
+    ui/             # Button, Input, Modal, Badge, Avatar (primitives)
+  features/         # Feature slices (components + hooks + types co-located)
+    board/
+    ai/
+    telegram/
+    payment/
+    auth/
+  hooks/            # Shared custom hooks (useBoard, useAI, useUser)
+  lib/
+    supabase.ts     # Single Supabase client instance
+    anthropic.ts    # Claude API wrapper
+    utils.ts
+  types/            # Global TypeScript types and DB schema types
+  pages/            # Route-level components only
+  store/            # Zustand slices (board, ui, user)
+```
+
+---
+
+## 3. TYPESCRIPT
+
+- Strict mode always on (`"strict": true`).
+- No `any`. Use `unknown` and narrow with guards if needed.
+- All Supabase table types must be generated from DB schema and imported from `src/types/supabase.ts`.
+- Props interfaces named `[ComponentName]Props`.
+- Event handlers typed explicitly: `React.MouseEvent<HTMLButtonElement>`, not just `MouseEvent`.
+- Always type async function return values: `Promise<Task[]>`, not `Promise<any>`.
+
+```ts
+// ✅
+async function fetchTasks(boardId: string): Promise<Task[]> { ... }
+
+// ❌
+async function fetchTasks(boardId) { ... }
+```
+
+---
+
+## 4. SUPABASE
+
+- One Supabase client. Never instantiate it outside `src/lib/supabase.ts`.
+- All DB calls go through custom hooks (`useBoard`, `useTasks`, etc.) — never call `supabase` directly in components.
+- Use Row Level Security (RLS) on every table. Never bypass RLS on the frontend.
+- Realtime: use `supabase.channel()` for board updates (card move, new card, user assignment). Clean up channels in `useEffect` cleanup.
+- Auth: use `supabase.auth` only. Session stored in Supabase — don't duplicate in localStorage.
+- Handle all Supabase errors explicitly. Never ignore `error` from `{ data, error }`.
+
+```ts
+// ✅
+const { data, error } = await supabase.from('tasks').select('*');
+if (error) throw new Error(error.message);
+
+// ❌
+const { data } = await supabase.from('tasks').select('*');
+```
+
+---
+
+## 5. COMPONENT RULES
+
+- One component per file.
+- Functional components only. No class components.
+- Keep components under ~150 lines. Extract if larger.
+- No business logic in UI components — use hooks.
+- Derive UI state from data, not parallel state flags (`isLoading`, `isEmpty`, `isError` via `status` enum, not 3 booleans).
+- Use `React.memo` only when profiling shows a real render problem.
+
+```ts
+// ✅ Status enum pattern
+type Status = 'idle' | 'loading' | 'success' | 'error';
+
+// ❌ Three parallel booleans
+const [isLoading, setIsLoading] = useState(false);
+const [isError, setIsError] = useState(false);
+const [isSuccess, setIsSuccess] = useState(false);
+```
+
+---
+
+## 6. AI TASK BREAKDOWN
+
+- All Claude API calls go through `src/lib/anthropic.ts` — never call the API directly from components.
+- Show streaming output in real time using `ReadableStream`. Display partial task list as it arrives.
+- AI breakdown result must be validated before inserting into Supabase (check required fields: title, assigneeId, columnId).
+- User must confirm AI-generated tasks before they are saved. Never auto-save AI output.
+- Prompt templates live in `src/lib/prompts.ts` — not hardcoded in hooks.
+
+```ts
+// src/lib/prompts.ts
+export const TASK_BREAKDOWN_PROMPT = (goal: string, users: User[]) => `...`;
+```
+
+---
+
+## 7. AI CHAT (IN-APP)
+
+- Chat state (messages history) lives in Zustand, not component state — persists across navigation.
+- Send full conversation history to Claude on each turn.
+- Render markdown responses with a lightweight parser (e.g., `react-markdown`).
+- Max visible messages in UI: 100. Older messages collapsed, not removed from state.
+- Chat has access to the current board context (board ID, column names, task count). Inject as system prompt context.
+
+---
+
+## 8. TELEGRAM INTEGRATION
+
+- Telegram connection status shown in UI with clear states: `disconnected | pending | connected | error`.
+- Users connect via a `/start` deeplink — generate and display the link, never ask for bot token from users.
+- Tasks created via Telegram appear on the board via Supabase Realtime — no polling.
+- Show Telegram origin badge on cards created through Telegram.
+
+---
+
+## 9. PAYMENT
+
+- Payment UI is gated — show pricing modal when user hits a free plan limit, not before.
+- Never store card data. Use Stripe Elements or hosted checkout only.
+- Subscription status comes from Supabase (synced from webhook) — fetch on auth, cache in Zustand.
+- Show clear plan limits in UI: "3/5 boards used", "Upgrade to add more members".
+- Downgrade flow: warn before losing access, never silently delete data.
+
+---
+
+## 10. STATE MANAGEMENT (ZUSTAND)
+
+- One Zustand store per feature slice: `useBoardStore`, `useUIStore`, `useUserStore`.
+- Store only serializable data. No functions, no DOM refs.
+- Server state (Supabase data) goes in React Query / hooks, not Zustand. Zustand is for UI state only.
+- Persist only user preferences to localStorage (theme, collapsed columns). Never persist auth or tasks.
+
+---
+
+## 11. DRAG AND DROP
+
+- Use `@dnd-kit/core` — not `react-beautiful-dnd` (unmaintained).
+- Optimistic update on drop: update local state immediately, then sync to Supabase. Revert on error.
+- Card order stored as `position: float` (use midpoint algorithm to avoid reordering all cards).
+- Keyboard drag-and-drop must work (accessibility requirement).
+
+---
+
+## 12. STYLING
+
+- Tailwind CSS utility classes only. No CSS modules, no styled-components.
+- Design tokens defined in `tailwind.config.ts` — no hardcoded hex values in JSX.
+- Dark mode supported via `class` strategy (`dark:` prefix).
+- No inline `style={{}}` except for dynamic values (e.g., drag preview position).
+
+---
+
+## 13. ERROR HANDLING
+
+- Every async operation wrapped in try/catch. No unhandled promise rejections.
+- User-facing errors shown via a toast system (`useToast` hook) — not console.log, not alerts.
+- AI errors (rate limit, timeout) show a retry button, not a broken UI.
+- Network errors distinguished from auth errors from server errors — different messages.
+
+---
+
+## 14. PERFORMANCE
+
+- Virtualize long task lists (>50 cards per column) with `@tanstack/virtual`.
+- Code-split by route. Payment and AI chat lazy-loaded.
+- Supabase queries always scoped (never `select('*')` without a `where` in production).
+- Images optimized: avatars served via Supabase Storage with size transforms.
+
+---
+
+## 15. SECURITY
+
+- Never expose service role key on the frontend. Only anon key.
+- Sanitize all user input before sending to AI (strip prompt injection attempts).
+- Board invite links expire — generate via edge function, not frontend.
+- Validate Telegram webhook origin on the backend, not frontend.
+
+---
+
+## 16. TESTING
+
+- Unit test: pure utility functions in `src/lib/utils.ts` and prompt builders.
+- Integration test: custom hooks with `@testing-library/react-hooks` + Supabase mock.
+- E2E test (Playwright): critical flows only — auth, create board, AI task breakdown, payment.
+- No snapshot tests.
+
+---
+
+## 17. DO NOT
+
+- Do not call Supabase directly in JSX or event handlers.
+- Do not store sensitive data (tokens, keys) in state or localStorage.
+- Do not use `useEffect` to sync state — derive it or use React Query.
+- Do not auto-assign AI tasks without user confirmation.
+- Do not block the UI while waiting for AI — always stream or show skeleton.
+- Do not hardcode user IDs, board IDs, or plan limits.
