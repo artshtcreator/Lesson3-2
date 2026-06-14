@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import type { DragEndEvent, SensorDescriptor, SensorOptions } from '@dnd-kit/core'
+import { useCallback, useMemo, useState } from 'react'
+import type { DragCancelEvent, DragEndEvent, DragStartEvent, SensorDescriptor, SensorOptions } from '@dnd-kit/core'
 import { KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import type { BoardCard } from '@/types/board'
@@ -22,69 +22,103 @@ interface UseBoardDndParams {
 
 interface UseBoardDndResult {
   sensors: SensorDescriptor<SensorOptions>[]
+  activeCard: BoardCard | null
+  onDragStart: (event: DragStartEvent) => void
   onDragEnd: (event: DragEndEvent) => void
+  onDragCancel: (event: DragCancelEvent) => void
   getCardDndId: (cardId: string) => string
   getColumnDndId: (columnId: string) => string
 }
 
 export const useBoardDnd = ({ cardsByColumn, getCardById, moveCard }: UseBoardDndParams): UseBoardDndResult => {
-  const pointerSensor = useSensor(PointerSensor)
+  const [activeCard, setActiveCard] = useState<BoardCard | null>(null)
+  const pointerSensor = useSensor(PointerSensor, {
+    activationConstraint: {
+      distance: 6,
+    },
+  })
   const keyboardSensor = useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   const sensors = useSensors(pointerSensor, keyboardSensor)
 
-  const onDragEnd = (event: DragEndEvent): void => {
-    const { active, over } = event
+  const onDragStart = useCallback(
+    (event: DragStartEvent): void => {
+      const activeCardId = extractCardId(String(event.active.id))
 
-    if (!over) {
-      return
-    }
-
-    const activeCardId = extractCardId(String(active.id))
-
-    if (!activeCardId) {
-      return
-    }
-
-    const overId = String(over.id)
-    const overCardId = extractCardId(overId)
-    const overColumnId = extractColumnId(overId)
-
-    if (overCardId) {
-      const overCard = getCardById(overCardId)
-
-      if (!overCard) {
+      if (!activeCardId) {
+        setActiveCard(null)
         return
       }
 
-      const targetCards = (cardsByColumn[overCard.columnId] ?? []).filter((card) => card.id !== activeCardId)
-      const targetIndex = targetCards.findIndex((card) => card.id === overCardId)
+      setActiveCard(getCardById(activeCardId) ?? null)
+    },
+    [getCardById],
+  )
 
-      moveCard({
-        cardId: activeCardId,
-        toColumnId: overCard.columnId,
-        toIndex: targetIndex < 0 ? targetCards.length : targetIndex,
-      })
+  const onDragCancel = useCallback((): void => {
+    setActiveCard(null)
+  }, [])
 
-      return
-    }
+  const onDragEnd = useCallback(
+    (event: DragEndEvent): void => {
+      setActiveCard(null)
 
-    if (overColumnId) {
-      const targetCards = (cardsByColumn[overColumnId] ?? []).filter((card) => card.id !== activeCardId)
-      moveCard({
-        cardId: activeCardId,
-        toColumnId: overColumnId,
-        toIndex: targetCards.length,
-      })
-    }
-  }
+      const { active, over } = event
+
+      if (!over) {
+        return
+      }
+
+      const activeCardId = extractCardId(String(active.id))
+
+      if (!activeCardId) {
+        return
+      }
+
+      const overId = String(over.id)
+      const overCardId = extractCardId(overId)
+      const overColumnId = extractColumnId(overId)
+
+      if (overCardId) {
+        const overCard = getCardById(overCardId)
+
+        if (!overCard) {
+          return
+        }
+
+        const targetCards = (cardsByColumn[overCard.columnId] ?? []).filter((card) => card.id !== activeCardId)
+        const targetIndex = targetCards.findIndex((card) => card.id === overCardId)
+
+        moveCard({
+          cardId: activeCardId,
+          toColumnId: overCard.columnId,
+          toIndex: targetIndex < 0 ? targetCards.length : targetIndex,
+        })
+
+        return
+      }
+
+      if (overColumnId) {
+        const targetCards = (cardsByColumn[overColumnId] ?? []).filter((card) => card.id !== activeCardId)
+        moveCard({
+          cardId: activeCardId,
+          toColumnId: overColumnId,
+          toIndex: targetCards.length,
+        })
+      }
+    },
+    [cardsByColumn, getCardById, moveCard],
+  )
 
   return useMemo(
     () => ({
       sensors,
+      activeCard,
+      onDragStart,
       onDragEnd,
+      onDragCancel,
       getCardDndId,
       getColumnDndId,
     }),
-    [sensors, onDragEnd],
+    [sensors, activeCard, onDragStart, onDragEnd, onDragCancel],
   )
 }

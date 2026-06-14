@@ -1,6 +1,7 @@
 import { create } from 'zustand'
+import { moveBoardTask } from '@/features/board/api/boards'
 import { mockBoardState } from '@/features/board/data/mockBoard'
-import type { BoardCard, BoardColumn } from '@/types/board'
+import type { BoardCard, BoardColumn, BoardState } from '@/types/board'
 
 interface MoveCardPayload {
   cardId: string
@@ -9,8 +10,11 @@ interface MoveCardPayload {
 }
 
 interface BoardStoreState {
+  currentBoardId: string | null
   columns: BoardColumn[]
   cards: BoardCard[]
+  setBoardState: (boardId: string, state: BoardState) => void
+  resetBoardState: () => void
   moveCard: (payload: MoveCardPayload) => void
 }
 
@@ -38,11 +42,29 @@ const getNextPosition = (cards: BoardCard[], targetIndex: number): number => {
   return POSITION_GAP
 }
 
+const initialColumns = [...mockBoardState.columns].sort(sortByPosition)
+const initialCards = [...mockBoardState.cards].sort(sortByPosition)
+
 export const useBoardStore = create<BoardStoreState>((set, get) => ({
-  columns: [...mockBoardState.columns].sort(sortByPosition),
-  cards: [...mockBoardState.cards].sort(sortByPosition),
+  currentBoardId: null,
+  columns: initialColumns,
+  cards: initialCards,
+  setBoardState: (boardId: string, state: BoardState): void => {
+    set({
+      currentBoardId: boardId,
+      columns: [...state.columns].sort(sortByPosition),
+      cards: [...state.cards].sort(sortByPosition),
+    })
+  },
+  resetBoardState: (): void => {
+    set({
+      currentBoardId: null,
+      columns: initialColumns,
+      cards: initialCards,
+    })
+  },
   moveCard: ({ cardId, toColumnId, toIndex }: MoveCardPayload): void => {
-    const { cards } = get()
+    const { cards, currentBoardId } = get()
     const sourceCard = cards.find((card) => card.id === cardId)
 
     if (!sourceCard) {
@@ -61,5 +83,9 @@ export const useBoardStore = create<BoardStoreState>((set, get) => ({
     )
 
     set({ cards: [...updatedCards].sort(sortByPosition) })
+
+    if (currentBoardId) {
+      void moveBoardTask(cardId, toColumnId, nextPosition).catch(() => undefined)
+    }
   },
 }))

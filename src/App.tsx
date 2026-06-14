@@ -1,10 +1,18 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { AppSidebarLayout } from '@/components/layout/AppSidebarLayout'
 import { AuthBootstrap } from '@/features/auth/components/AuthBootstrap'
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute'
 import { PublicRoute } from '@/features/auth/components/PublicRoute'
-import { BoardPage } from '@/pages/BoardPage'
+import { AIAssistantPage } from '@/pages/AIAssistantPage'
+import { AIGeneratorPage } from '@/pages/AIGeneratorPage'
+import { BillingPage } from '@/pages/BillingPage'
+import { BoardDetailPage } from '@/pages/BoardDetailPage'
+import { BoardListPage } from '@/pages/BoardListPage'
+import { DashboardPage } from '@/pages/DashboardPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
+import { SettingsPage } from '@/pages/SettingsPage'
+import { TelegramInboxPage } from '@/pages/TelegramInboxPage'
 
 const App = (): JSX.Element => (
   <>
@@ -31,11 +39,21 @@ const App = (): JSX.Element => (
         path="/"
         element={
           <ProtectedRoute>
-            <BoardPage />
+            <AppSidebarLayout />
           </ProtectedRoute>
         }
-      />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      >
+        <Route index element={<Navigate to="/boards" replace />} />
+        <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="boards" element={<BoardListPage />} />
+        <Route path="boards/:boardId" element={<BoardDetailPage />} />
+        <Route path="ai-generator" element={<AIGeneratorPage />} />
+        <Route path="ai-assistant" element={<AIAssistantPage />} />
+        <Route path="telegram-inbox" element={<TelegramInboxPage />} />
+        <Route path="billing" element={<BillingPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/boards" replace />} />
     </Routes>
   </>
 )

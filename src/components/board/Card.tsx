@@ -1,4 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { CardContent } from '@/components/board/CardContent'
 import type { BoardCard } from '@/types/board'
 
 export interface CardProps {
@@ -9,26 +11,31 @@ export interface CardProps {
 export const Card = ({ card, dndId }: CardProps): JSX.Element => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: dndId })
 
-  const style = transform
-    ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-        transition,
-      }
-    : { transition }
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0 : 1,
+  }
 
   return (
     <article
       ref={setNodeRef}
       style={style}
-      className={`rounded-card border border-surface-100 bg-white p-3 shadow-sm dark:border-surface-800 dark:bg-surface-900 ${
-        isDragging ? 'opacity-60' : ''
-      }`}
+      className="rounded-card border border-surface-100 bg-white p-3 shadow-sm dark:border-surface-800 dark:bg-surface-900"
       {...attributes}
       {...listeners}
     >
-      <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-50">{card.title}</h3>
-      <p className="mt-1 text-xs text-surface-800 dark:text-surface-100">{card.description}</p>
-      <p className="mt-3 text-xs font-medium text-brand-600 dark:text-brand-500">{card.assigneeName}</p>
+      <CardContent card={card} />
     </article>
   )
 }
+
+interface CardDragOverlayProps {
+  card: BoardCard
+}
+
+export const CardDragOverlay = ({ card }: CardDragOverlayProps): JSX.Element => (
+  <article className="cursor-grabbing rounded-card border border-brand-500 bg-white p-3 shadow-lg ring-2 ring-brand-500/30 dark:border-brand-500 dark:bg-surface-900">
+    <CardContent card={card} />
+  </article>
+)
