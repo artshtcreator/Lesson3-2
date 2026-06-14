@@ -11,6 +11,7 @@ interface SignInPayload {
 interface SignUpPayload {
   email: string
   password: string
+  role: string
 }
 
 interface SignUpResult {
@@ -112,7 +113,7 @@ export const useAuth = (): UseAuthResult => {
   )
 
   const signUp = useCallback(
-    async ({ email, password }: SignUpPayload): Promise<SignUpResult> => {
+    async ({ email, password, role }: SignUpPayload): Promise<SignUpResult> => {
       if (!isSupabaseConfigured) {
         const message = 'Supabase is not configured. Fill VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.'
         setStatus('error')
@@ -123,7 +124,15 @@ export const useAuth = (): UseAuthResult => {
       setStatus('loading')
       setErrorMessage(null)
 
-      const { data, error } = await supabase.auth.signUp({ email, password })
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            role,
+          },
+        },
+      })
 
       if (error) {
         setStatus('error')

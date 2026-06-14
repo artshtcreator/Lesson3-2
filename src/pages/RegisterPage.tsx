@@ -10,7 +10,17 @@ type RegisterFormState = {
   email: string
   password: string
   confirmPassword: string
+  role: string
 }
+
+const IT_TEAM_ROLES = [
+  'Frontend Developer',
+  'Backend Developer',
+  'QA Engineer',
+  'DevOps Engineer',
+  'UI/UX Designer',
+  'Product Manager',
+] as const
 
 export const RegisterPage = (): JSX.Element => {
   const navigate = useNavigate()
@@ -19,11 +29,12 @@ export const RegisterPage = (): JSX.Element => {
     email: '',
     password: '',
     confirmPassword: '',
+    role: '',
   })
 
   const handleFieldChange =
     (field: keyof RegisterFormState) =>
-    (event: ChangeEvent<HTMLInputElement>): void => {
+    (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>): void => {
       setFormState((previous) => ({ ...previous, [field]: event.target.value }))
     }
 
@@ -36,7 +47,7 @@ export const RegisterPage = (): JSX.Element => {
     }
 
     try {
-      const signUpResult = await signUp({ email: formState.email, password: formState.password })
+      const signUpResult = await signUp({ email: formState.email, password: formState.password, role: formState.role })
 
       if (signUpResult.requiresEmailConfirmation) {
         toast.success('Registration successful. Check your email to confirm your account.')
@@ -104,6 +115,25 @@ export const RegisterPage = (): JSX.Element => {
             onChange={handleFieldChange('confirmPassword')}
             required
           />
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-surface-900 dark:text-surface-50">Role</span>
+            <select
+              id="register-role"
+              value={formState.role}
+              onChange={handleFieldChange('role')}
+              required
+              className="w-full rounded-card border border-surface-100 bg-white px-3 py-2 text-surface-900 outline-none transition focus:border-brand-500 dark:border-surface-800 dark:bg-surface-900 dark:text-surface-50"
+            >
+              <option value="" disabled>
+                Select your role
+              </option>
+              {IT_TEAM_ROLES.map((role) => (
+                <option key={role} value={role}>
+                  {role}
+                </option>
+              ))}
+            </select>
+          </label>
 
           {errorMessage ? <p className="text-sm text-danger-500">{errorMessage}</p> : null}
 
