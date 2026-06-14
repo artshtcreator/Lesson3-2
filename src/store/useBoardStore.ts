@@ -15,6 +15,8 @@ interface BoardStoreState {
   cards: BoardCard[]
   setBoardState: (boardId: string, state: BoardState) => void
   resetBoardState: () => void
+  updateCard: (cardId: string, updates: Partial<BoardCard>) => void
+  deleteCard: (cardId: string) => void
   moveCard: (payload: MoveCardPayload) => void
 }
 
@@ -62,6 +64,18 @@ export const useBoardStore = create<BoardStoreState>((set, get) => ({
       columns: initialColumns,
       cards: initialCards,
     })
+  },
+  updateCard: (cardId: string, updates: Partial<BoardCard>): void => {
+    set((state) => ({
+      cards: state.cards
+        .map((card) => (card.id === cardId ? { ...card, ...updates } : card))
+        .sort(sortByPosition),
+    }))
+  },
+  deleteCard: (cardId: string): void => {
+    set((state) => ({
+      cards: state.cards.filter((card) => card.id !== cardId),
+    }))
   },
   moveCard: ({ cardId, toColumnId, toIndex }: MoveCardPayload): void => {
     const { cards, currentBoardId } = get()

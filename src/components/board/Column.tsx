@@ -8,9 +8,10 @@ export interface ColumnProps {
   cards: BoardCard[]
   columnDndId: string
   getCardDndId: (cardId: string) => string
+  onCardOpen?: (card: BoardCard) => void
 }
 
-export const Column = ({ column, cards, columnDndId, getCardDndId }: ColumnProps): JSX.Element => {
+export const Column = ({ column, cards, columnDndId, getCardDndId, onCardOpen }: ColumnProps): JSX.Element => {
   const { setNodeRef, isOver } = useDroppable({ id: columnDndId })
   const cardDndIds = cards.map((card) => getCardDndId(card.id))
 
@@ -31,7 +32,7 @@ export const Column = ({ column, cards, columnDndId, getCardDndId }: ColumnProps
       <SortableContext items={cardDndIds} strategy={verticalListSortingStrategy}>
         <div className="space-y-2">
           {cards.map((card) => (
-            <Card key={card.id} card={card} dndId={getCardDndId(card.id)} />
+            <Card key={card.id} card={card} dndId={getCardDndId(card.id)} onOpen={onCardOpen} />
           ))}
         </div>
       </SortableContext>

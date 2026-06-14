@@ -4,12 +4,16 @@ export interface BoardColumn {
   position: number
 }
 
+export type TaskPriority = 'low' | 'medium' | 'high'
+
 export interface BoardCard {
   id: string
   title: string
   description: string
   columnId: string
+  priority: TaskPriority
   assigneeId: string | null
+  assigneeIds: string[]
   assigneeName: string
   assigneeEmail: string | null
   position: number
@@ -30,4 +34,17 @@ export interface BoardMemberOption {
 export interface CreateBoardPayload {
   name: string
   memberIds: string[]
+}
+
+export interface CreateTaskPayload {
+  title: string
+  description: string
+  assigneeId: string | null
+}
+
+export interface UpdateTaskPayload {
+  title: string
+  description: string
+  priority: TaskPriority
+  assigneeIds: string[]
 }

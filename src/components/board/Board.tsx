@@ -14,6 +14,7 @@ export interface BoardProps {
   onDragCancel: (event: DragCancelEvent) => void
   getCardDndId: (cardId: string) => string
   getColumnDndId: (columnId: string) => string
+  onCardOpen?: (card: BoardCard) => void
 }
 
 export const Board = ({
@@ -26,6 +27,7 @@ export const Board = ({
   onDragCancel,
   getCardDndId,
   getColumnDndId,
+  onCardOpen,
 }: BoardProps): JSX.Element => (
   <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={onDragCancel}>
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -36,6 +38,7 @@ export const Board = ({
           cards={cardsByColumn[column.id] ?? []}
           columnDndId={getColumnDndId(column.id)}
           getCardDndId={getCardDndId}
+          onCardOpen={onCardOpen}
         />
       ))}
     </div>
