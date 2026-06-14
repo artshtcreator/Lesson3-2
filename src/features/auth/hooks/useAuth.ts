@@ -54,7 +54,14 @@ export const useAuth = (): UseAuthResult => {
     setStatus('loading')
 
     try {
-      const { data, error } = await supabase.auth.getSession()
+      const sessionResult = await Promise.race([
+        supabase.auth.getSession(),
+        new Promise<never>((_, reject) => {
+          window.setTimeout(() => reject(new Error('Auth initialization timed out. Please refresh the page.')), 8000)
+        }),
+      ])
+
+      const { data, error } = sessionResult
 
       if (error) {
         setStatus('error')

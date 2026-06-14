@@ -14,6 +14,11 @@ dist-ssr
 .env
 .env.*
 !.env.example
+.vite
+
+# Other local lesson folders (not part of this app repo)
+Занятие 2/
+Занятие 3/
 
 # Editor directories and files
 .vscode/*
